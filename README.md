@@ -54,21 +54,22 @@ tab audio ──> 4-second rolling window ──> tempo detection ──> smooth
 ```
 
 Audio is tapped from the captured stream through an `AudioWorklet` and collected
-into a four-second rolling window. Every second that window is passed to
-[libsonare](https://github.com/libraz/libsonare), which returns a tempo estimate
-along with a confidence score and a ranked list of candidate tempos.
+into a four-second rolling window. Every second that window is analysed, using
+DSP primitives from [libsonare](https://github.com/libraz/libsonare): first an
+onset envelope — where energy rises, roughly where notes start — and then a
+tempogram, which scores every plausible beat period against that envelope, for
+every frame of the window.
 
-Those candidates are what make the reading stable. Tempo detectors frequently
-report half or double the real tempo, so rather than trusting the headline
-number, each candidate is scored on its own confidence and on how well it
-continues the tempo established so far. The anchor for that comparison is the
-*median* of recent readings rather than a running average — an average gets
-dragged toward outliers, so a couple of half-speed readings would pull it
-halfway to the wrong answer and the error would reinforce itself. A median
-ignores a minority of bad readings outright.
+That per-frame detail is the point. Tempo detectors frequently report half or
+double the real tempo, and a single number per window gives you no way to tell a
+good reading from an octave error. Instead each frame contributes its own
+strongest tempo, anything outside 45–200 BPM is discarded, and the window's
+reading is the **median** of what remains. A handful of frames latching onto
+half speed get outvoted by the rest rather than becoming the answer.
 
-The chosen value is then smoothed with an exponential moving average and drives
-the animation through a phase accumulator:
+How much of the window agreed with that median becomes the reading's confidence;
+weak ones are dropped rather than smoothed in. What survives is averaged
+exponentially and drives the animation through a phase accumulator:
 
 ```
 loopsPerSecond = (bpm / 60) * loopsPerBeat
@@ -88,32 +89,33 @@ frame rate means tempo changes glide instead of stuttering.
 | `pcm-worklet.js` | Audio tap |
 | `detector-tempogram.js` | Tempo detection |
 | `detector-libsonare.js` | Alternative tempo detection (below) |
-| `tempo-tracker.js` | Octave resolution and smoothing |
+| `tempo-tracker.js` | Confidence gating, smoothing, octave handling for the alternative engine |
 | `renderer.js` | GIF decoding and frame timing |
-
-### How tempo is estimated
-
-The default builds an onset envelope, derives a tempogram from it, takes the
-dominant tempo of each frame, discards anything outside 45–200 BPM and returns
-the median. Filtering a distribution this way is more resistant to half and
-double-speed errors than trusting any single estimate.
 
 ### Alternative engine
 
-`libsonare.html` is the same page driven by libsonare's own BPM aggregation
-instead, which returns one estimate per window along with ranked candidate
-tempos that get scored for consistency with the tempo so far.
+`libsonare.html` is the same page using libsonare's own BPM aggregation rather
+than its raw primitives. That returns one estimate per window plus a ranked list
+of candidate tempos, so octave errors are handled differently: instead of
+outvoting them within a window, each candidate is scored on its own confidence
+and on how closely it continues the tempo established so far, measured against
+the median of recent readings. A median anchor matters there — a running average
+gets dragged toward outliers, so a couple of half-speed readings would pull the
+reference halfway to the wrong answer and the error would reinforce itself.
 
-Which engine suits a given kind of music is genuinely unsettled, which is why
-both are here. The pages are otherwise identical; `libsonare.html` is marked as
-such in its footer.
+It is faster (roughly 40 ms per window against 85 ms) but noisier on expressive
+playing, where its per-window estimate can swing considerably. Which engine
+suits a given kind of music is genuinely unsettled, which is why both are here.
+The pages are otherwise identical; `libsonare.html` is marked as such in its
+footer.
 
 ## Credits and licence
 
 This code is MIT licensed — see [LICENSE](LICENSE).
 
-Tempo detection by [libsonare](https://github.com/libraz/libsonare), Apache-2.0,
-loaded from jsDelivr at runtime.
+Audio analysis by [libsonare](https://github.com/libraz/libsonare), Apache-2.0,
+loaded from jsDelivr at runtime. Both engines rely on it — the default for its
+onset and tempogram primitives, the alternative for its BPM estimation too.
 
 No third-party artwork ships with this repository. The default animation is
 Twitch's DinoDance emote, fetched at runtime from Twitch's own CDN and never
