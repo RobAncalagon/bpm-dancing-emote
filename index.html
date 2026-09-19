@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BPM Dancing Emote</title>
+  <style>
+    :root { color-scheme: dark; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #0e0e10;
+      color: #efeff1;
+      font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      padding: 24px 16px 32px;
+      box-sizing: border-box;
+    }
+
+    #stage {
+      width: min(90vw, 420px);
+      height: min(90vw, 420px);
+      background: #17171a;
+      border: 1px solid #2a2a2e;
+      border-radius: 12px;
+    }
+
+    .readout {
+      font: 600 40px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: #ffd60a;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .readout .unit { font-size: 14px; color: #adadb8; font-weight: 400; }
+
+    button, input[type="file"] {
+      font: inherit;
+      color: #efeff1;
+      background: #1f1f23;
+      border: 1px solid #3a3a3d;
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+
+    button:hover { background: #2a2a2e; }
+
+    button.primary {
+      background: #9147ff;
+      border-color: #9147ff;
+      padding: 11px 22px;
+      font-weight: 600;
+    }
+    button.primary:hover { background: #a970ff; }
+
+    button:disabled, input:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.primary:disabled { background: #1f1f23; border-color: #3a3a3d; }
+
+    #status {
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: #adadb8;
+      text-align: center;
+      min-height: 1.5em;
+      max-width: 62ch;
+    }
+    #status[data-tone="live"] { color: #00d68f; }
+    #status[data-tone="error"] { color: #ff6b6b; }
+
+    .animation-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      border-top: 1px solid #2a2a2e;
+      padding-top: 16px;
+      margin-top: 4px;
+    }
+    .animation-row .label { color: #7d7d86; font-size: 13px; }
+
+    .credit { font-size: 11px; color: #55555c; text-align: center; margin: 0; }
+    .credit a { color: #6e6e78; }
+  </style>
+</head>
+<body data-detector="tempogram">
+  <canvas id="stage" width="840" height="840"></canvas>
+
+  <div class="readout"><span id="bpm">—</span><span class="unit">BPM</span></div>
+
+  <button type="button" class="primary" id="start-tab">Capture tab audio</button>
+
+  <div id="status">Click above, pick the tab playing music, and tick "Also share tab audio".</div>
+
+  <div class="animation-row">
+    <label class="label" for="gif-input">Animation</label>
+    <input type="file" id="gif-input" accept="image/gif,image/webp,image/apng,image/png,image/avif">
+    <button type="button" id="reset-gif">Reset to default</button>
+  </div>
+
+  <p class="credit">Default animation: the DinoDance emote, &copy; Twitch, loaded from Twitch.</p>
+
+  <!-- Classic inline script: runs even from file://, where module scripts are
+       CORS-blocked and main.js would never execute — leaving every button inert
+       with no visible error. -->
+  <script>
+    if (location.protocol === 'file:') {
+      const status = document.getElementById('status');
+      status.dataset.tone = 'error';
+      status.innerHTML =
+        'Opened from file:// — module scripts are blocked, so nothing is wired up.<br>' +
+        'Serve this folder instead:<br><br>' +
+        '<code>python -m http.server 8123 --bind 127.0.0.1</code><br><br>' +
+        'then open <code>http://127.0.0.1:8123/index.html</code>';
+      document.querySelectorAll('button, input').forEach((el) => { el.disabled = true; });
+    }
+  </script>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
